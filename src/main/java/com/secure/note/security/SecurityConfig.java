@@ -21,7 +21,7 @@ public class SecurityConfig {
                 .requestMatchers("/contact").permitAll()
                 .requestMatchers("/public/**").permitAll()
                 .anyRequest().authenticated());
-        http.csrf(AbstractHttpConfigurer::disable); //CSRF 중지
+        http.csrf(AbstractHttpConfigurer::disable); //CSRF 중지 (post 는 csrf 토큰 필요)
         //http.formLogin(withDefaults());
 //        http.sessionManagement(session ->
 //                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
