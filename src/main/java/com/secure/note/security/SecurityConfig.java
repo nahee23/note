@@ -5,9 +5,16 @@ import com.secure.note.models.Role;
 import com.secure.note.models.User;
 import com.secure.note.repositories.RoleRepository;
 import com.secure.note.repositories.UserRepository;
+import com.secure.note.security.jwt.AuthEntryPointJwt;
+import com.secure.note.security.jwt.AuthTokenFilter;
+import com.secure.note.security.services.CustomLoggingFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -16,6 +23,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.time.LocalDate;
 
@@ -26,27 +35,52 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
+    @Autowired
+    private AuthEntryPointJwt unauthorizedHandler; //인증 실패시 실행 객체
+
+    //jwt 토큰 인증 필터
+    @Bean
+    public AuthTokenFilter authenticationJwtTokenFilter() {
+        return new AuthTokenFilter();
+    }
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf(AbstractHttpConfigurer::disable); //CSRF 중지 (post 는 csrf 토큰 필요)
         http.authorizeHttpRequests(requests
                 -> requests
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/auth/public/**").permitAll()
                 .requestMatchers("/contact").permitAll()
                 .requestMatchers("/public/**").permitAll()
                 .anyRequest().authenticated());
-        http.csrf(AbstractHttpConfigurer::disable); //CSRF 중지 (post 는 csrf 토큰 필요)
+        http.exceptionHandling(exeption
+                -> exeption.authenticationEntryPoint(unauthorizedHandler));
+        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
         //http.formLogin(withDefaults());
 //        http.sessionManagement(session ->
 //                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        http.httpBasic(withDefaults());
+        //http.httpBasic(withDefaults());
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    //패스워드엔코더 객체 등록
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     //CommandLineRunner 처음 실행시 한번 실행 유저롤과 테스트 유저1,2를 입력함.
     @Bean
     public CommandLineRunner initData(RoleRepository roleRepository,
-                                      UserRepository userRepository) {
+                                      UserRepository userRepository,
+                                      PasswordEncoder passwordEncoder) {
         return args -> { //실행되는 코드들
             //권한 테이블에 유저 권한이 있으면 가져오고 없으면 입력함
             Role userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
@@ -56,7 +90,7 @@ public class SecurityConfig {
                     .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_ADMIN)));
 
             if (!userRepository.existsByUserName("user1")) {
-                User user1 = new User("user1", "user1@example.com", "{noop}password1");
+                User user1 = new User("user1", "user1@example.com", passwordEncoder.encode("password1"));
                 user1.setAccountNonLocked(false);
                 user1.setAccountNonExpired(true);
                 user1.setCredentialsNonExpired(true);
@@ -70,7 +104,7 @@ public class SecurityConfig {
             }
 
             if (!userRepository.existsByUserName("admin")) {
-                User admin = new User("admin", "admin@example.com", "{noop}adminPass");
+                User admin = new User("admin", "admin@example.com", passwordEncoder.encode("adminPass"));
                 admin.setAccountNonLocked(true);
                 admin.setAccountNonExpired(true);
                 admin.setCredentialsNonExpired(true);
@@ -85,13 +119,4 @@ public class SecurityConfig {
         };
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public CommandLineRunner initData(){
-
-    }
 }
