@@ -12,4 +12,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUserName(String username);
     //유저네임으로 유저가 있는지 확인
     Boolean existsByUserName(String username);
+    //이메일 중복확인 (boolean 에서 b 는 대문자)
+    Boolean existsByEmail(String email);
 }

@@ -25,10 +25,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.time.LocalDate;
-
-import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
@@ -38,6 +37,9 @@ public class SecurityConfig {
     @Autowired
     private AuthEntryPointJwt unauthorizedHandler; //인증 실패시 실행 객체
 
+    @Autowired
+    private CorsConfigurationSource corsConfigurationSource;
+
     //jwt 토큰 인증 필터
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
@@ -46,6 +48,7 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.cors(cors->cors.configurationSource(corsConfigurationSource));
         http.csrf(AbstractHttpConfigurer::disable); //CSRF 중지 (post 는 csrf 토큰 필요)
         http.authorizeHttpRequests(requests
                 -> requests
@@ -54,8 +57,8 @@ public class SecurityConfig {
                 .requestMatchers("/contact").permitAll()
                 .requestMatchers("/public/**").permitAll()
                 .anyRequest().authenticated());
-        http.exceptionHandling(exeption
-                -> exeption.authenticationEntryPoint(unauthorizedHandler));
+        http.exceptionHandling(exception
+                -> exception.authenticationEntryPoint(unauthorizedHandler));
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
         //http.formLogin(withDefaults());
 //        http.sessionManagement(session ->

@@ -1,5 +1,6 @@
 package com.secure.note.services;
 import com.secure.note.dtos.UserDTO;
+import com.secure.note.models.Role;
 import com.secure.note.models.User;
 
 import java.util.List;
@@ -11,4 +12,18 @@ public interface UserService {
     List<User> getAllUsers();
     //한명의 유저를 가져옴 (UserDTO 객체)
     UserDTO getUserById(Long id);
+    //유저 정보를 가져옴 (유저네임)
+    User findByUsername(String username);
+    //유저계정 잠금 상태 변경
+    void updateAccountLockStatus(Long userId, boolean lock);
+    //유저 권한들 가져오기 (DB에 있는 모든 권한들)
+    List<Role> getAllRoles();
+    //계정만료상태 업데이트 
+    void updateAccountExpiryStatus(Long userId, boolean expire);
+    //계정사용가능상태 업데이트
+    void updateAccountEnabledStatus(Long userId, boolean enabled);
+    //계정 비번만료상태 업데이트 
+    void updateCredentialsExpiryStatus(Long userId, boolean expire);
+    //패스워드 업데이트
+    void updatePassword(Long userId, String password);
 }
